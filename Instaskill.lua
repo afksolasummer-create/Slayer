@@ -2,6 +2,8 @@
 -- Nao garante morte, recompensas ou dano reconhecido pelo servidor.
 -- Raio em studs ao redor do personagem, nao angulo da camera.
 -- Somente NPCs carregados no cliente podem ser encontrados.
+-- Ima LOCAL experimental: o servidor pode corrigir as posicoes.
+-- Desligar o ima interrompe movimentos; nao restaura posicoes anteriores.
 -- TESTE: tenta Tool:Activate() com a ferramenta equipada a cada 0.6s.
 -- Nao aumenta o alcance da arma, nao mira e nao altera a validacao do servidor.
 -- Ataque de longa distancia precisa de integracao ao combate do jogo.
@@ -11,6 +13,9 @@ local RunService = game:GetService("RunService")
 assert(RunService:IsClient(), "Esta versao precisa executar no cliente.")
 
 local RAIO = 1000
+local DISTANCIA_IMA = 6
+local posicoesIma = setmetatable({}, {__mode = "k"})
+local proximaPosicao = 0
 local INTERVALO = 0.15
 local INTERVALO_ATAQUE = 0.6
 local ultimoAtaque = -math.huge
@@ -27,6 +32,7 @@ local humanoids = {}
 local connections = {}
 local worker
 _G.InstaKillRunning = true
+_G.NPCMagnetEnabled = true
 
 local function registrar(instance)
 	if instance:IsA("Humanoid") then
@@ -95,6 +101,18 @@ local function eliminarSeProximo(humanoid, playerRoot)
 		return
 	end
 
+	if _G.NPCMagnetEnabled then
+		if not posicoesIma[humanoid] then
+			proximaPosicao = proximaPosicao + 1
+			posicoesIma[humanoid] = proximaPosicao
+		end
+		local angulo = posicoesIma[humanoid] * 2.3999632297
+		local centro = playerRoot.Position + playerRoot.CFrame.LookVector * DISTANCIA_IMA
+		local destino = centro + Vector3.new(math.cos(angulo) * 2, 0, math.sin(angulo) * 2)
+		-- Translada o modelo sem mudar ancoragem, colisoes ou network ownership.
+		npc:PivotTo(npc:GetPivot() + (destino - npcRoot.Position))
+	end
+
 	-- Mesmo comportamento local da primeira versao; nao confirma morte no servidor.
 	if humanoid.Health > 0 then
 		humanoid.Health = 0
@@ -156,5 +174,7 @@ worker = task.spawn(function()
 	cleanup()
 end)
 
+-- Desligar somente o ima: _G.NPCMagnetEnabled = false
+-- Ligar somente o ima: _G.NPCMagnetEnabled = true
 -- Para parar neste cliente: _G.InstaKillCleanup()
 warn("Instaskill LOCAL ativo; raio: " .. RAIO .. ". Morte e recompensas no servidor nao sao garantidas.")
