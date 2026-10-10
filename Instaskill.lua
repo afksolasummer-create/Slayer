@@ -1,15 +1,14 @@
--- Coloque este codigo em um Script no ServerScriptService do seu jogo.
--- Atualizar o GitHub nao atualiza automaticamente o jogo publicado.
--- Compativel com NPCs que usam Humanoid; sistemas de vida personalizados
--- precisam ser integrados ao sistema de dano/morte do proprio jogo.
+-- Versao CLIENTE: altera somente a vida observada localmente.
+-- Nao garante morte, recompensas ou dano reconhecido pelo servidor.
+-- Raio em studs ao redor do personagem, nao angulo da camera.
+-- Somente NPCs carregados no cliente podem ser encontrados.
+-- Ataque de longa distancia precisa de integracao ao combate do jogo.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-assert(RunService:IsServer(),
-	"Instaskill precisa executar no servidor, em um Script no ServerScriptService.")
+assert(RunService:IsClient(), "Esta versao precisa executar no cliente.")
 
-local SEU_USER_ID = 5467515147
-local RAIO = 50
+local RAIO = 1000
 local INTERVALO = 0.15
 
 -- Encerra a instancia anterior antes de iniciar outra.
@@ -73,7 +72,7 @@ local function eliminarSeProximo(humanoid, playerRoot)
 	if not npc or not npc:IsA("Model") or pertenceAJogador(npc) then
 		return
 	end
-	if humanoid.Health <= 0 and humanoid:GetState() == Enum.HumanoidStateType.Dead then
+	if humanoid.Health <= 0 then
 		return
 	end
 
@@ -89,11 +88,8 @@ local function eliminarSeProximo(humanoid, playerRoot)
 		return
 	end
 
-	-- Um Humanoid com Dead desabilitado pode ficar com vida zero sem morrer.
-	-- Nao destroi o modelo: preserva os handlers de morte, loot e respawn.
-	humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+	-- Mesmo comportamento local da primeira versao; nao confirma morte no servidor.
 	humanoid.Health = 0
-	humanoid:ChangeState(Enum.HumanoidStateType.Dead)
 end
 
 worker = task.spawn(function()
@@ -102,7 +98,7 @@ worker = task.spawn(function()
 		if not ativo or not _G.InstaKillRunning then
 			break
 		end
-		local player = Players:GetPlayerByUserId(SEU_USER_ID)
+		local player = Players.LocalPlayer
 		local character = player and player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local playerHumanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -118,5 +114,5 @@ worker = task.spawn(function()
 	cleanup()
 end)
 
--- Para parar no servidor: _G.InstaKillCleanup()
-print("Instaskill ativado no servidor; raio: " .. RAIO)
+-- Para parar neste cliente: _G.InstaKillCleanup()
+warn("Instaskill LOCAL ativo; raio: " .. RAIO .. ". Morte e recompensas no servidor nao sao garantidas.")
