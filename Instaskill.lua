@@ -2,6 +2,8 @@
 -- Nao garante morte, recompensas ou dano reconhecido pelo servidor.
 -- Raio em studs ao redor do personagem, nao angulo da camera.
 -- Somente NPCs carregados no cliente podem ser encontrados.
+-- TESTE: tenta Tool:Activate() com a ferramenta equipada a cada 0.6s.
+-- Nao aumenta o alcance da arma, nao mira e nao altera a validacao do servidor.
 -- Ataque de longa distancia precisa de integracao ao combate do jogo.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,6 +12,10 @@ assert(RunService:IsClient(), "Esta versao precisa executar no cliente.")
 
 local RAIO = 1000
 local INTERVALO = 0.15
+local INTERVALO_ATAQUE = 0.6
+local ultimoAtaque = -math.huge
+local ferramentaAtivada
+local avisouSemFerramenta = false
 
 -- Encerra a instancia anterior antes de iniciar outra.
 if type(_G.InstaKillCleanup) == "function" then
@@ -33,6 +39,10 @@ local function cleanup()
 		return
 	end
 	ativo = false
+	if ferramentaAtivada then
+		pcall(function() ferramentaAtivada:Deactivate() end)
+		ferramentaAtivada = nil
+	end
 	for _, connection in ipairs(connections) do
 		connection:Disconnect()
 	end
@@ -72,9 +82,6 @@ local function eliminarSeProximo(humanoid, playerRoot)
 	if not npc or not npc:IsA("Model") or pertenceAJogador(npc) then
 		return
 	end
-	if humanoid.Health <= 0 then
-		return
-	end
 
 	local npcRoot = humanoid.RootPart
 		or npc:FindFirstChild("HumanoidRootPart")
@@ -89,12 +96,44 @@ local function eliminarSeProximo(humanoid, playerRoot)
 	end
 
 	-- Mesmo comportamento local da primeira versao; nao confirma morte no servidor.
-	humanoid.Health = 0
+	if humanoid.Health > 0 then
+		humanoid.Health = 0
+	end
+	-- Mantem o alvo elegivel ao ataque mesmo com vida local zerada.
+	return true
+end
+
+local function tentarAtaque(character)
+	if os.clock() - ultimoAtaque < INTERVALO_ATAQUE then
+		return
+	end
+	local tool = character:FindFirstChildOfClass("Tool")
+	if not tool then
+		if not avisouSemFerramenta then
+			warn("Equipe a espada/soco. Nenhuma Tool equipada; combate personalizado precisa de integracao.")
+			avisouSemFerramenta = true
+		end
+		return
+	end
+	avisouSemFerramenta = false
+	if not tool.Enabled or (tool.RequiresHandle and not tool:FindFirstChild("Handle")) then
+		return
+	end
+	ultimoAtaque = os.clock()
+	ferramentaAtivada = tool
+	local ok, err = pcall(function() tool:Activate() end)
+	if not ok then
+		warn("Nao foi possivel ativar a ferramenta: " .. tostring(err))
+	end
 end
 
 worker = task.spawn(function()
 	while ativo and _G.InstaKillRunning do
 		task.wait(INTERVALO)
+		if ferramentaAtivada then
+			pcall(function() ferramentaAtivada:Deactivate() end)
+			ferramentaAtivada = nil
+		end
 		if not ativo or not _G.InstaKillRunning then
 			break
 		end
@@ -103,12 +142,15 @@ worker = task.spawn(function()
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local playerHumanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if root and root:IsA("BasePart") and playerHumanoid and playerHumanoid.Health > 0 then
+			local encontrouAlvo = false
 			for humanoid in pairs(humanoids) do
-				local ok, err = pcall(eliminarSeProximo, humanoid, root)
+				local ok, resultado = pcall(eliminarSeProximo, humanoid, root)
+				if ok and resultado then encontrouAlvo = true end
 				if not ok then
-					warn("Instaskill: falha ao processar NPC: " .. tostring(err))
+					warn("Instaskill: falha ao processar NPC: " .. tostring(resultado))
 				end
 			end
+			if encontrouAlvo then tentarAtaque(character) end
 		end
 	end
 	cleanup()
