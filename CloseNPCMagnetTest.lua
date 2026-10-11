@@ -8,7 +8,7 @@ local player = Players.LocalPlayer
 assert(player, "Jogador local indisponivel.")
 
 local RAIO = 1000
-local DISTANCIA = 3
+local DISTANCIA = 1
 local ESPACAMENTO = 3
 local INTERVALO = 0.15
 local TOLERANCIA = 1.25
@@ -146,5 +146,5 @@ worker = task.spawn(function()
     end
     cleanup()
 end)
-print("Ima proximo LOCAL: primeira fila a 3 studs. Acertos nao garantidos.")
+print("Ima proximo LOCAL: NPC central a 1 stud; laterais com espacamento de 3 studs. Acertos nao garantidos.")
 -- Encerrar nao restaura as posicoes originais dos NPCs.
