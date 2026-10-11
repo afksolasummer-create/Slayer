@@ -9,9 +9,8 @@ assert(player, "Jogador local indisponivel.")
 
 local RAIO = 1000
 local DISTANCIA = 1
-local ESPACAMENTO = 3
 local INTERVALO = 0.15
-local TOLERANCIA = 1.25
+local TOLERANCIA = 0.25
 
 for _, name in ipairs({"MagnetDamageTestCleanup", "InstaKillCleanup",
     "NPCMagnetCleanup", "CloseNPCMagnetCleanup"}) do
@@ -108,18 +107,13 @@ local function update(character, root)
     local forward = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
     if forward.Magnitude < 0.01 then return end
     forward = forward.Unit
-    local right = Vector3.new(-forward.Z, 0, forward.X)
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances = excluded
     params.RespectCanCollide = true
-    -- Primeira fila: centro, esquerda, direita. Outras filas ficam atras dela.
-    local columns = {0, -1, 1}
-    for index, npc in ipairs(list) do
-        local row = math.floor((index - 1) / 3)
-        local column = columns[((index - 1) % 3) + 1]
-        local destination = root.Position + forward * (DISTANCIA + row * ESPACAMENTO)
-            + right * (column * ESPACAMENTO)
+    -- Todos usam o mesmo ponto alvo, a 1 stud a frente.
+    local destination = root.Position + forward * DISTANCIA
+    for _, npc in ipairs(list) do
         local direction = destination - root.Position
         local wall = workspace:Raycast(root.Position, direction, params)
         if not wall and (npc.part.Position - destination).Magnitude > TOLERANCIA then
@@ -146,5 +140,5 @@ worker = task.spawn(function()
     end
     cleanup()
 end)
-print("Ima proximo LOCAL: NPC central a 1 stud; laterais com espacamento de 3 studs. Acertos nao garantidos.")
+print("Ima proximo LOCAL: todos no mesmo ponto alvo a 1 stud. Acertos nao garantidos.")
 -- Encerrar nao restaura as posicoes originais dos NPCs.
