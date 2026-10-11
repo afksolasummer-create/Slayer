@@ -10,23 +10,33 @@ gui.Name = "WaveInspectTest"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 local button = Instance.new("TextButton")
-button.Size = UDim2.fromOffset(220, 44)
-button.Position = UDim2.new(0, 10, 0, 220)
+button.Size = UDim2.new(0.65, 0, 0.12, 0)
+button.Position = UDim2.new(0.07, 0, 0.03, 0)
 button.Text = "Analisar waves (nao avanca)"
 button.TextSize = 14
 button.Parent = gui
-local report = Instance.new("TextBox")
-report.Size = UDim2.new(0.8, 0, 0, 170)
-report.Position = UDim2.new(0, 10, 0, 270)
-report.MultiLine = true
-report.TextEditable = false
-report.ClearTextOnFocus = false
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(0.86, 0, 0.65, 0)
+scroll.Position = UDim2.new(0.07, 0, 0.18, 0)
+scroll.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+scroll.BackgroundTransparency = 0.05
+scroll.ScrollBarThickness = 12
+scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.CanvasSize = UDim2.new()
+scroll.Parent = gui
+local report = Instance.new("TextLabel")
+report.Size = UDim2.new(1, -28, 0, 0)
+report.Position = UDim2.fromOffset(8, 8)
+report.AutomaticSize = Enum.AutomaticSize.Y
+report.BackgroundTransparency = 1
+report.TextColor3 = Color3.new(1, 1, 1)
 report.TextWrapped = true
 report.TextXAlignment = Enum.TextXAlignment.Left
 report.TextYAlignment = Enum.TextYAlignment.Top
-report.TextSize = 12
+report.TextSize = 14
 report.Text = "Abra Roguelike ou Tower e toque em analisar. Diagnostico somente."
-report.Parent = gui
+report.Parent = scroll
 
 local function matches(name)
     name = string.lower(name)
@@ -55,9 +65,8 @@ local connection = button.Activated:Connect(function()
     if #lines == 2 then table.insert(lines, "Nenhum candidato encontrado por nome.") end
     _G.WaveInspectReport = table.concat(lines, "\n")
     print(_G.WaveInspectReport)
-    local short = {}
-    for i = 1, math.min(#lines, 8) do table.insert(short, lines[i]) end
-    report.Text = table.concat(short, "\n")
+    report.Text = _G.WaveInspectReport
+    scroll.CanvasPosition = Vector2.new(0, 0)
 end)
 local function cleanup()
     connection:Disconnect()
